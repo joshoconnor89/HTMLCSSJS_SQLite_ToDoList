@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  	<meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width;" />
+    <title>My ToDo List</title>
+	<script type="text/javascript">
+    // Set the event listener to run 
+	// when the device is ready
+			// Create a reference to the database
+			var mode = 'Add';
+			var db;
+			var sql;
+			
+		function getDatabase() {
+			return window.openDatabase("todoListDB", "1.0", "ToDoList Database", 200000);
+		}
+		
+		// Run the onDeviceReady method
+	
+		// PhoneGap is ready
+	    function onDeviceReady() {
+	        db = getDatabase();
+	        db.transaction(function(tx) {
+	        	tx.executeSql('CREATE TABLE IF NOT EXISTS MYLIST (id INTEGER PRIMARY KEY AUTOINCREMENT, list_action,complete INTEGER)');
+			}, databaseError, getItems);		
+	    }
+		
+		// Run a select statement to pull out all records
+		function getItems() {
+	        db.transaction(function(tx) {
+				tx.executeSql('SELECT * FROM MYLIST', [], querySuccess, databaseError);
+			}, databaseError);
+	    }
+
+	    function deleteMe(id){
+	    	db.transaction(function(tx) {
+				tx.executeSql('delete from MYLIST where id = "' + id + '"');
+			}, databaseError, getItems);
+
+	    }
+
+	    function clearMe(){
+	    	mode = 'Add';
+	    	document.getElementById("message").innerHTML ='';
+	    	document.getElementById('saveItem').value = "Save";
+	    	document.getElementById('list_action').value = '';
+	    }
+
+
+	    function updateMe(id,dbtext){
+
+      document.getElementById("editid").value = id;
+	    	console.log("id is " + id + " and text is " + dbtext);
+	    	document.getElementById('list_action').value = dbtext;
+	    	document.getElementById("message").innerHTML = '<p>You are now updating ' + dbtext + '</p>';
+	    	document.getElementById("message").innerHTML += '<a href="#" onclick="clearMe();">Return to Add Mode</a>';
+	    	document.getElementById('saveItem').value = "Update " + dbtext;
+	    
+
+	    }
+
+
+	    function completeTask(idtocheck){
+	    	//is this check box checked or not!
+	    	var checkbox2check = "checked-" + idtocheck;
+	    	if (document.getElementById(checkbox2check).checked === true){
+	    	    //if it is write update statement
+	            db.transaction(function(tx) {
+				sql = 'update MYLIST set complete = "1" where id = "' + idtocheck + '"';
+				console.log(sql);
+				tx.executeSql(sql);
+			}, databaseError,checkStrike);
+	      }
+	      else
+	      {
+	      	  db.transaction(function(tx) {
+				sql = 'update MYLIST set complete = "0" where id = "' + idtocheck + '"';
+				tx.executeSql(sql);
+			}, databaseError,checkStrike);
+
+	      }
+
+
+	      function checkStrike(){
+	      	var text2check = 'text-' + idtocheck;
+	      	var text2Strike = document.getElementById(text2check).innerText;
+	      	if (document.getElementById(checkbox2check).checked === true){
+	      		  	console.log("should be struck");
+	      		  	var result = text2Strike.strike();
+	      		  	document.getElementById(text2check).innerHTML = result;
+			 }
+			 else
+			 {
+		    document.getElementById(text2check).innerHTML = text2Strike; 
+			 }
+		  }
+
+	    }
+		
+
+
+
+
+
+		// Process the SQLResultSetList
+	    function querySuccess(tx, results) {
+	    	console.log(results);
+	        var len = results.rows.length;
+			var output = '';
+	        for (var i=0; i<len; i++){
+	        var dbtext = results.rows.item(i).list_action;
+	        var id = results.rows.item(i).id;
+			   output = output + '<li id="' + id + '"><input type = "checkbox" id="checked-' + id + '" onclick="completeTask(' + id +');"><span id = "text-' + id + '">' + dbtext + '</span>   <a href="#" onclick="deleteMe(' + id + ');">Delete</a> <a href="#" onclick="updateMe(' + id + ',\'' + dbtext + '\');">Update</a></li>';
+	        }
+
+
+			document.getElementById("message").innerHTML = '<p>There are ' + len + ' items in your list:</p>';
+			document.getElementById("listItems").innerHTML = '<ul>' + output + '</ul>';
+			 if (mode == 'Update'){
+	        	document.getElementById("message").innerHTML += '<a href="#" onclick="clearMe();">Return to Add Mode</a>';
+	        }
+	    }
+		
+		// Database error handler
+	    function databaseError(error) {
+	       console.log("SQL Error: " + error.code);
+	    }
+	
+		// Insert a record into the database
+		function insertItem() {
+			var insertValue = document.getElementById('list_action').value;
+
+			if(document.getElementById('saveItem').value.indexOf('Update') != -1){
+				mode = 'Update'
+			}
+
+		    if (mode == 'Add'){
+			db.transaction(function(tx) {
+				tx.executeSql('INSERT INTO MYLIST (list_action) VALUES ("' + insertValue + '")');
+			}, databaseError, getItems);
+
+			// Clear the value from the input box
+			document.getElementById('list_action').value = '';
+		}
+
+		if (mode == 'Update'){
+
+			var editid = document.getElementById("editid").value 
+			db.transaction(function(tx) {
+				var sql = 'update MYLIST set list_action = "' + insertValue + '" where id = "' + editid + '"';
+				console.log(sql);
+				tx.executeSql(sql);
+			}, databaseError, getItems);
+		
+			//get value from text field
+			//write update statement
+		  }
+		}
+			
+	
+    </script>
+  </head>
+  <body onload="onDeviceReady();">
+    <h1>My ToDo List</h1>
+    
+	<input type="text" 		id="list_action" />
+		<input type="hidden"  id="editid" />
+
+	<input type="button" 	id="saveItem" value="Save" onclick="insertItem();" />
+	
+	<div id="message"></div>
+	<div id="listItems"></div>
+	
+  </body>
+</html>
